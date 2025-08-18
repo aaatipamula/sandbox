@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>L-Systems</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="" />
+  <style>
+    * {
+      font-family: 'Courier New', Courier, monospace;
+      color: white;
+    }
+    input, button {
+      background-color: black;
+      border: 1px solid white;
+      border-radius: 4px;
+      field-sizing: content;
+      padding: 0.4rem;
+      transition: opacity 0.2s cubic-bezier(0.6, -0.28, 0.735, 0.045);
+    }
+    input[type=submit]:hover, button:hover {
+      opacity: 50%;
+    }
+    body {
+      background-color: black;
+      margin: 0;
+      padding: 0;
+    }
+    .canvas-container {
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      place-content: center;
+      flex-wrap: wrap;
+      flex-direction: column;
+    }
+    .l-system-canvas {
+      height: 70%;
+      width: 70%;
+      border: 1px solid white;
+      border-radius: 4px;
+      position: relative;
+    }
+    .tinker-form {
+      margin: 1rem 0;
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+    }
+    .modal-overlay {
+      display: flex;
+      /* Hidden by default */
+      flex-direction: column;
+      flex-wrap: wrap;
+      place-content: center;
+      position: fixed;
+      /* Stay in place */
+      z-index: 1000;
+      /* Sit on top */
+      left: 0;
+      top: 0;
+      width: 100%;
+      /* Full width */
+      height: 100%;
+      /* Full height */
+      background: rgba(255, 255, 255, 0.5);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .active-overlay {
+      opacity: 100%;
+      pointer-events: all;
+    }
+    .option-wrapper {
+      width: 50%;
+      height: 50%;
+      display: flex;
+      align-content: center;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      flex-direction: column;
+    }
+    .system-button {
+      font-size: 20px;
+      padding: 1rem
+    }
+    .rules-float {
+      white-space: pre-wrap;
+    }
+    .system-text {
+      width: 60%;
+      padding: 1rem;
+      background-color: black;
+      border: 1px solid white;
+      border-radius: 4px;
+      max-height: 75%;
+      overflow: auto;
+      scrollbar-color: white rgba(0, 0, 0, 0);
+      scrollbar-width: thin;
+    }
+    .border {
+      border: 1px solid white;
+      border-radius: 4px;
+      padding: 1rem;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-container">
+    <h1>L-System Visualizer</h1>
+    <form class="tinker-form" id="submit-form">
+      <span class="border">
+        <label for="generations">Generations:</label>
+        <input id="generations" name="generations" type="number" min="1" max="5">
+        <label for="degrees">Degrees:</label>
+        <input id="degrees" name="degrees" type="number" min="0" max="360" step="any">
+        <label for="axiom">Axiom:</label>
+        <input id="axiom" name="axiom" type="text">
+        <input type="submit" value="Change">
+      </span>
+
+      <button onclick="toggleModal('system-text-modal')">View System Text</button>
+
+      <button onclick="toggleModal('system-option-modal')">Select System</button>
+    </form>
+    <canvas id="drawing-board" class="l-system-canvas">
+      <p id="rules" class="rules-float"></p>
+    </canvas>
+  </div>
+  <div id="system-option-modal" class="modal-overlay" onclick="toggleModal('system-option-modal')">
+    <div id="system-options" class="option-wrapper">
+    </div>
+  </div>
+  <div id="system-text-modal" class="modal-overlay" onclick="toggleModal('system-text-modal')">
+    <p id="system-text" class="system-text"></p>
+  </div>
+  <script>
+    let GENERATIONS = 4;
+    const RULESETS = [
+      {
+        name: "Square Wave",
+        rules: {
+          "X": "+YF-XFX-FY+",
+          "Y": "-XF+YFY+FX-",
+        },
+        axiom: "X",
+        degrees: 90,
+      },
+      {
+        name: "Branch",
+        rules: {
+          "F": "FF",
+          "X": "F-[[X]+X]+F[+FX]-X",
+        },
+        axiom: "X",
+        degrees: 22.5,
+      },
+      {
+        name: "Bush",
+        rules: {
+          "F": "FF+[+F-F-F]-[-F+F+F]",
+        },
+        axiom: "F",
+        degrees: 22.5,
+      },
+      {
+        name: "Stick",
+        rules: {
+          "F": "FF",
+          "X": "F[+X]F[-X]+X",
+        },
+        axiom: "X",
+        degrees: 20,
+      },
+      {
+        name: "Triangle",
+        rules: {
+          "F": "F-F+F",
+        },
+        axiom: "F+F+F",
+        degrees: 120,
+      },
+      {
+        name: "Pentaplexity",
+        rules: {
+          "F": "F++F++F|F-F++F",
+        },
+        axiom: " F++F++F++F++F",
+        degrees: 36,
+      },
+    ];
+
+    let CURRENT_RULE = RULESETS[Math.floor(Math.random() * RULESETS.length)];
+
+    const submitForm = document.getElementById("submit-form");
+    submitForm.addEventListener("submit", event => {
+      event.preventDefault();
+
+      const generationInput = document.getElementById("generations");
+      const degreeInput = document.getElementById("degrees");
+      const axiomInput = document.getElementById("axiom");
+
+      GENERATIONS = parseInt(generationInput.value);
+      CURRENT_RULE.degrees = parseFloat(degreeInput.value);
+      CURRENT_RULE.axiom = axiomInput.value;
+
+      redrawAndUpdate();
+    });
+
+    function toggleModal(elementId) {
+      const modal = document.getElementById(elementId);
+      modal.classList.toggle("active-overlay");
+    }
+
+    function populateOptions() {
+      const systemOptions = document.getElementById("system-options");
+      for (const ruleset of RULESETS) {
+        const newButton = document.createElement('button');
+        newButton.innerText = ruleset.name;
+        newButton.classList.add('system-button');
+        newButton.onclick = () => {
+          CURRENT_RULE = ruleset;
+          redrawAndUpdate();
+        }
+        systemOptions.appendChild(newButton);
+      }
+    }
+
+    function updateForm() {
+      const generationInput = document.getElementById("generations");
+      const degreeInput = document.getElementById("degrees");
+      const axiomInput = document.getElementById("axiom");
+      const rulesParagraph = document.getElementById("rules");
+
+      generationInput.value = GENERATIONS;
+      degreeInput.value = CURRENT_RULE.degrees;
+      axiomInput.value = CURRENT_RULE.axiom;
+
+      let tempString = "";
+      for (const [letter, rule] of Object.entries(CURRENT_RULE.rules)) {
+        tempString += `${letter} -> ${rule}\n`;
+      }
+      rulesParagraph.innerText = tempString;
+    }
+
+    function create_l_system(axiom, rules, generations) {
+      let initial_string = axiom;
+      let next_string = '';
+      for (let i = 0; i < generations; i++) {
+        for (let j = 0; j < initial_string.length; j++) {
+          const letter = initial_string[j];
+          next_string += rules[letter] || letter
+        }
+        initial_string = next_string;
+        next_string = '';
+      }
+
+      return initial_string;
+    }
+
+    function draw_system(system, deg) {
+      // Setup canvas for high DPI screens
+      const canvas = document.getElementById("drawing-board");
+      const ctx = canvas.getContext('2d');
+      const ratio = window.devicePixelRatio || 1;
+
+      const cssWidth = canvas.clientWidth;
+      const cssHeight = canvas.clientHeight;
+
+      canvas.width = cssWidth * ratio;
+      canvas.height = cssHeight * ratio;
+
+      ctx.scale(ratio, ratio);
+      ctx.strokeStyle = "white";
+
+      // Setup for drawing L-System
+      const stack = [];
+      let angle = -90;
+      let x = canvas.width / 2;
+      let y = canvas.height;
+
+      // Count how many "F" commands (forward draw) are in the final string
+      let fcount = (system.match(/F/g) || []).length;
+
+      // Determine segment length based on canvas width/height and drawing complexity
+      let len = Math.min(canvas.width, canvas.height) / (Math.log(fcount) + 1) ** 2;
+
+      // Start drawing
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+
+      if (CURRENT_RULE.name === "Pentaplexity") {
+        angle -= 18;
+      }
+
+      // Draw the system created by the L-System
+      for (const rule of system) {
+        switch (rule) {
+          case 'F':
+            const rad = angle * Math.PI / 180
+            x += len * Math.cos(rad);
+            y += len * Math.sin(rad);
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            break;
+          case '+':
+            angle += deg;
+            break;
+          case '-':
+            angle -= deg;
+            break;
+          case '[':
+            stack.push([x, y, angle]);
+            break;
+          case ']':
+            [x, y, angle] = stack.pop();
+            ctx.moveTo(x, y);
+            break;
+          case '>':
+            len *= CURRENT_RULE.len_factor;
+            break;
+          case '<':
+            len /= CURRENT_RULE.len_factor;
+            break;
+          case '|':
+            angle += 180
+          default: break;
+        }
+      }
+
+      ctx.stroke();
+    }
+
+    function redrawAndUpdate() {
+      const systemText = document.getElementById("system-text");
+      // Create and draw the system
+      const system = create_l_system(CURRENT_RULE.axiom, CURRENT_RULE.rules, GENERATIONS);
+      console.log(system);
+      systemText.innerText = system;
+      draw_system(system, CURRENT_RULE.degrees);
+      updateForm();
+    }
+
+    // Set values
+    populateOptions();
+    redrawAndUpdate();
+  </script>
+</body>
+</html>
