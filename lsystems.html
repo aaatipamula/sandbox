@@ -10,45 +10,57 @@
       font-family: 'Courier New', Courier, monospace;
       color: white;
     }
+
+    body {
+      background-color: black;
+      margin: 0;
+      padding: 0;
+      width: 100dvw;
+      height: 100dvh;
+    }
+
     input, button {
       background-color: black;
       border: 1px solid white;
       border-radius: 4px;
       field-sizing: content;
       padding: 0.4rem;
-      transition: opacity 0.2s cubic-bezier(0.6, -0.28, 0.735, 0.045);
+      transition: opacity 0.2s;
     }
+
     input[type=submit]:hover, button:hover {
       opacity: 50%;
     }
-    body {
-      background-color: black;
-      margin: 0;
-      padding: 0;
-    }
+
     .canvas-container {
-      height: 100vh;
-      width: 100vw;
+      width: 100%;
+      height: 100%;
+
       display: flex;
+      flex-direction: column;
       place-content: center;
       flex-wrap: wrap;
-      flex-direction: column;
     }
+
     .l-system-canvas {
       height: 70%;
-      width: 70%;
+      width: 80%;
       border: 1px solid white;
       border-radius: 4px;
       position: relative;
     }
+
     .tinker-form {
-      margin: 1rem 0;
       display: flex;
       flex-direction: row;
       justify-content: space-between;
+      padding: 0;
+      width: 80%;
+      margin: 1rem 0.1rem;
     }
+
     .modal-overlay {
-      display: flex;
+      display: none;
       /* Hidden by default */
       flex-direction: column;
       flex-wrap: wrap;
@@ -64,13 +76,14 @@
       height: 100%;
       /* Full height */
       background: rgba(255, 255, 255, 0.5);
-      opacity: 0;
       pointer-events: none;
     }
+
     .active-overlay {
-      opacity: 100%;
+      display: flex;
       pointer-events: all;
     }
+
     .option-wrapper {
       width: 50%;
       height: 50%;
@@ -80,13 +93,16 @@
       flex-wrap: wrap;
       flex-direction: column;
     }
+
     .system-button {
       font-size: 20px;
       padding: 1rem
     }
+
     .rules-float {
       white-space: pre-wrap;
     }
+
     .system-text {
       width: 60%;
       padding: 1rem;
@@ -98,6 +114,7 @@
       scrollbar-color: white rgba(0, 0, 0, 0);
       scrollbar-width: thin;
     }
+
     .border {
       border: 1px solid white;
       border-radius: 4px;
@@ -120,9 +137,8 @@
         <input type="submit" value="Change">
       </span>
 
-      <button onclick="toggleModal('system-text-modal')">View System Text</button>
-
-      <button onclick="toggleModal('system-option-modal')">Select System</button>
+      <button onclick="e => e.preventDefault(); toggleModal('system-text-modal')">View System Text</button>
+      <button onclick="e => e.preventDefault(); toggleModal('system-option-modal')">Select System</button>
     </form>
     <canvas id="drawing-board" class="l-system-canvas">
       <p id="rules" class="rules-float"></p>
@@ -263,15 +279,13 @@
       // Setup canvas for high DPI screens
       const canvas = document.getElementById("drawing-board");
       const ctx = canvas.getContext('2d');
-      const ratio = window.devicePixelRatio || 1;
 
-      const cssWidth = canvas.clientWidth;
-      const cssHeight = canvas.clientHeight;
+      // CSS size
+      const canvasRect = canvas.getBoundingClientRect();
 
-      canvas.width = cssWidth * ratio;
-      canvas.height = cssHeight * ratio;
+      canvas.width = canvasRect.width;
+      canvas.height = canvasRect.height;
 
-      ctx.scale(ratio, ratio);
       ctx.strokeStyle = "white";
 
       // Setup for drawing L-System
@@ -286,6 +300,8 @@
       // Determine segment length based on canvas width/height and drawing complexity
       let len = Math.min(canvas.width, canvas.height) / (Math.log(fcount) + 1) ** 2;
 
+      console.log("length:", len);
+
       // Start drawing
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -296,48 +312,50 @@
 
       // Draw the system created by the L-System
       for (const rule of system) {
-        switch (rule) {
-          case 'F':
-            const rad = angle * Math.PI / 180
-            x += len * Math.cos(rad);
-            y += len * Math.sin(rad);
+        setTimeout(() => {
+          switch (rule) {
+            case 'F':
+              const rad = angle * Math.PI / 180
+              x += len * Math.cos(rad);
+              y += len * Math.sin(rad);
 
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            break;
-          case '+':
-            angle += deg;
-            break;
-          case '-':
-            angle -= deg;
-            break;
-          case '[':
-            stack.push([x, y, angle]);
-            break;
-          case ']':
-            [x, y, angle] = stack.pop();
-            ctx.moveTo(x, y);
-            break;
-          case '>':
-            len *= CURRENT_RULE.len_factor;
-            break;
-          case '<':
-            len /= CURRENT_RULE.len_factor;
-            break;
-          case '|':
-            angle += 180
-          default: break;
-        }
+              ctx.lineTo(x, y);
+              ctx.stroke();
+              break;
+            case '+':
+              angle += deg;
+              break;
+            case '-':
+              angle -= deg;
+              break;
+            case '[':
+              stack.push([x, y, angle]);
+              break;
+            case ']':
+              [x, y, angle] = stack.pop();
+              ctx.moveTo(x, y);
+              break;
+            case '>':
+              len *= CURRENT_RULE.len_factor;
+              break;
+            case '<':
+              len /= CURRENT_RULE.len_factor;
+              break;
+            case '|':
+              angle += 180
+            default: break;
+          };
+          ctx.stroke();
+        }, len)
       }
 
-      ctx.stroke();
+      // ctx.stroke();
     }
 
     function redrawAndUpdate() {
       const systemText = document.getElementById("system-text");
       // Create and draw the system
       const system = create_l_system(CURRENT_RULE.axiom, CURRENT_RULE.rules, GENERATIONS);
-      console.log(system);
       systemText.innerText = system;
       draw_system(system, CURRENT_RULE.degrees);
       updateForm();
