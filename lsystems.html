@@ -124,6 +124,7 @@
   </style>
 </head>
 <body>
+
   <div class="canvas-container">
     <h1>L-System Visualizer</h1>
     <form class="tinker-form" id="submit-form">
@@ -137,20 +138,24 @@
         <input type="submit" value="Change">
       </span>
 
-      <button onclick="e => e.preventDefault(); toggleModal('system-text-modal')">View System Text</button>
-      <button onclick="e => e.preventDefault(); toggleModal('system-option-modal')">Select System</button>
+      <button type="button" onclick="selectRandomRule()">Select Random</button>
+      <button type="button" onclick="toggleModal('system-text-modal')">View System Text</button>
+      <button type="button" onclick="toggleModal('system-option-modal')">Select System</button>
     </form>
     <canvas id="drawing-board" class="l-system-canvas">
       <p id="rules" class="rules-float"></p>
     </canvas>
   </div>
+
   <div id="system-option-modal" class="modal-overlay" onclick="toggleModal('system-option-modal')">
     <div id="system-options" class="option-wrapper">
     </div>
   </div>
+
   <div id="system-text-modal" class="modal-overlay" onclick="toggleModal('system-text-modal')">
     <p id="system-text" class="system-text"></p>
   </div>
+
   <script>
     let GENERATIONS = 4;
     const RULESETS = [
@@ -286,6 +291,9 @@
       canvas.width = canvasRect.width;
       canvas.height = canvasRect.height;
 
+      // Clean up previous drawing
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
       ctx.strokeStyle = "white";
 
       // Setup for drawing L-System
@@ -359,6 +367,12 @@
       systemText.innerText = system;
       draw_system(system, CURRENT_RULE.degrees);
       updateForm();
+    }
+
+    // Get and redraw a random rule
+    function selectRandomRule() {
+      CURRENT_RULE = RULESETS[Math.floor(Math.random() * RULESETS.length)];
+      redrawAndUpdate();
     }
 
     // Set values
