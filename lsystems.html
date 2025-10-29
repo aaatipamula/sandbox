@@ -280,6 +280,20 @@
       return initial_string;
     }
 
+    // Returns delay in milliseconds, based on segment length
+    function computeDelay(len) {
+      // Prevent extreme speeds
+      const minDelay = 5;   // fastest possible
+      const maxDelay = 200; // slowest possible
+
+      // Logarithmic mapping (base tuned experimentally)
+      const delay = Math.log(len + 1) * 40;
+
+      // Clamp to a reasonable range
+      return Math.min(maxDelay, Math.max(minDelay, delay));
+    }
+
+
     function draw_system(system, deg) {
       // Setup canvas for high DPI screens
       const canvas = document.getElementById("drawing-board");
@@ -307,6 +321,8 @@
 
       // Determine segment length based on canvas width/height and drawing complexity
       let len = Math.min(canvas.width, canvas.height) / (Math.log(fcount) + 1) ** 2;
+
+      const delay = computeDelay(len);
 
       console.log("length:", len);
 
@@ -354,7 +370,7 @@
             default: break;
           };
           ctx.stroke();
-        }, len)
+        }, delay)
       }
 
       // ctx.stroke();
