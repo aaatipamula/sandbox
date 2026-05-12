@@ -11,14 +11,13 @@ class LSystem:
         generations: int,
         len_factor: Optional[float] = None,
         rules: Dict[str, str],
-        **kwargs
-
+        **,
     ) -> None:
         self.axiom = axiom
         self.degrees = degrees
         self.generations = generations
         self.rules = rules
-        self.len_factor = len_factor or 0.0
+        self.len_factor = len_factor or 1.0
 
         self.__system = self.__build_system()
         self.__line_len = 10
@@ -41,6 +40,7 @@ class LSystem:
 
         stack = []
 
+        print("Len: ", len(self.__system))
         for char in self.__system:
             match char:
                 case 'F':
@@ -123,6 +123,7 @@ RULESETS = [
 def print_choices():
     os.system('clear')
     rule_names = map(lambda x: x['name'], RULESETS)
+    print("NOTE: Use 'gen' to change the number of generations.")
     print("The following rulesets are available:")
     for i, rule in enumerate(rule_names, 1):
         print(f"  {i}. {rule}")
